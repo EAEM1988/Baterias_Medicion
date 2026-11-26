@@ -1,891 +1,741 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- =====================================================
-         BATERIAS_MEDICION
-         Sistema de gestión y trazabilidad de baterías
-         Versión 0.8.0
-    ====================================================== -->
-
-    <meta name="theme-color" content="#76121D">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Baterias_Med">
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#D71920">
+    <meta name="theme-color" content="#76121D">
+    <title>Baterias_Medicion | Gestión y Trazabilidad</title>
+    <link rel="manifest" href="./manifest.json">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --surface: #ffffff;
+            --surface-soft: #fafafa;
+            --text: #292d32;
+            --muted: #6c737c;
+            --line: #e5e7eb;
+            --primary: #76121D;
+            --primary-2: #D71920;
+            --primary-soft: #FCEBED;
+            --radius: 12px;
+            --shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+        }
 
-    <title>Baterias_Medicion | Gestión técnica</title>
+        * {
+            box-sizing: border-box;
+        }
 
-    <link rel="stylesheet" href="style.css">
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 245px;
+            flex-shrink: 0;
+            background: linear-gradient(180deg, #5e0d16 0%, #76121D 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 14px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            z-index: 50;
+            transition: transform 0.22s ease;
+        }
+
+        .brand-box {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 6px 8px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            margin-bottom: 16px;
+        }
+
+        .brand-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.16);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .brand-title {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            opacity: 0.82;
+            margin-top: 2px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.88);
+            padding: 11px 12px;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        .nav-item.active {
+            background: #ffffff;
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main */
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 11px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #pageTitle {
+            margin: 0;
+            font-size: 19px;
+            color: var(--primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .content-area {
+            padding: 22px 24px 36px;
+            max-width: 1240px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .view {
+            display: none;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .section-heading {
+            margin-bottom: 18px;
+        }
+
+        .section-heading h2 {
+            margin: 0 0 4px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+
+        .section-heading p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .stat-card strong {
+            display: block;
+            font-size: 24px;
+            color: var(--primary);
+            margin: 8px 0 4px;
+        }
+
+        .stat-card small {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel h3 {
+            margin: 0 0 12px;
+            font-size: 15px;
+            color: var(--primary);
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Formulario de mediciones */
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 22px;
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+        }
+
+        .form-card h3 {
+            margin: 0 0 14px;
+            font-size: 15px;
+            color: var(--primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #3a414a;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d4d8dd;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #ffffff;
+            color: var(--text);
+        }
+
+        .form-group input[readonly] {
+            background: #f6f7f9;
+            color: #525962;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-2);
+            box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.1);
+        }
+
+        .batteries-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .battery-row {
+            border: 1px solid #e7e9ec;
+            background: var(--surface-soft);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .battery-row-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .battery-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .radio-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .replacement-details {
+            margin-top: 14px;
+            max-width: 280px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .btn-primary {
+            border: 0;
+            border-radius: 8px;
+            padding: 11px 18px;
+            background: linear-gradient(110deg, var(--primary), var(--primary-2));
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 10px 16px;
+            background: #ffffff;
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-soft);
+        }
+
+        @media (max-width: 960px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .dashboard-grid,
+            .form-grid,
+            .batteries-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: inline-flex;
+            }
+
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .content-area {
+                padding: 16px 14px 28px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
-
 <body>
-
-<div class="app-container">
-
-    <!-- =====================================================
-         1. MENÚ LATERAL
-    ====================================================== -->
-
-    <aside class="sidebar" id="sidebar">
-
-        <div class="brand">
-
-            <div class="brand-icon">🔋</div>
-
-            <div>
-                <h2>Baterias_Medicion</h2>
-                <span>Gestión técnica</span>
+    <div class="app-container">
+        <aside id="sidebar" class="sidebar" aria-label="Menú principal">
+            <div class="brand-box">
+                <div class="brand-badge">🔋</div>
+                <div>
+                    <div class="brand-title">Baterias_Medicion</div>
+                    <div class="brand-sub">Control y trazabilidad</div>
+                </div>
             </div>
 
+            <nav class="sidebar-nav">
+                <button type="button" class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Panel principal</span>
+                </button>
+                <button type="button" class="nav-item" data-view="mediciones">
+                    <span class="nav-icon">⚡</span>
+                    <span>Registrar mediciones</span>
+                </button>
+                <button type="button" class="nav-item" data-view="historial">
+                    <span class="nav-icon">🕒</span>
+                    <span>Historial</span>
+                </button>
+                <button type="button" class="nav-item" data-view="reportes">
+                    <span class="nav-icon">📑</span>
+                    <span>Informes y reportes</span>
+                </button>
+            </nav>
+        </aside>
+
+        <div class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button type="button" id="mobileMenu" class="mobile-menu-btn" aria-label="Abrir menú">
+                        ☰
+                    </button>
+                    <h1 id="pageTitle">Panel principal</h1>
+                </div>
+
+                <div class="user-info">
+                    <div class="avatar" aria-hidden="true">T</div>
+                    <span>Cargando...</span>
+                </div>
+            </header>
+
+            <main class="content-area">
+                <!-- Vista: Panel principal -->
+                <section id="dashboard" class="view active">
+                    <div class="section-heading">
+                        <h2>Panel principal</h2>
+                        <p>Resumen operativo de mediciones y reemplazos de baterías.</p>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span>Mediciones registradas</span>
+                            <strong>0</strong>
+                            <small>Total histórico</small>
+                        </div>
+                        <div class="stat-card">
+                            <span>Baterías medidas</span>
+                            <strong>0</strong>
+                            <small>Lecturas registradas</small>
+                        </div>
+                        <div class="stat-card">
+                            <span>Baterías reemplazadas</span>
+                            <strong>0</strong>
+                            <small>Unidades informadas</small>
+                        </div>
+                        <div class="stat-card">
+                            <span>Estaciones evaluadas</span>
+                            <strong>0</strong>
+                            <small>Con mediciones</small>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="panel">
+                            <h3>Actividad reciente</h3>
+                            <div class="empty-state">Cargando actividad reciente...</div>
+                        </div>
+
+                        <div class="panel">
+                            <h3>Accesos rápidos</h3>
+                            <div class="quick-actions">
+                                <button type="button" class="btn-primary" data-go="mediciones">
+                                    + Nueva medición de baterías
+                                </button>
+                                <button type="button" class="btn-secondary" data-go="historial">
+                                    Ver historial de mediciones
+                                </button>
+                                <button type="button" class="btn-secondary" data-go="reportes">
+                                    Consultar informes y Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Vista: Registrar mediciones -->
+                <section id="mediciones" class="view">
+                    <div class="section-heading">
+                        <h2>Registrar mediciones</h2>
+                        <p>Ingresa los datos del banco de 4 baterías, reemplazos y observaciones.</p>
+                    </div>
+
+                    <form id="measurementForm" novalidate>
+                        <div class="form-card">
+                            <h3>Datos generales</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="date">Fecha de medición</label>
+                                    <input type="date" id="date" name="date" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="line">Línea</label>
+                                    <select id="line" name="line" required>
+                                        <option value="">Seleccionar línea</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="station">Estación</label>
+                                    <select id="station" name="station" disabled required>
+                                        <option value="">Primero selecciona una línea</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="cabinet">Ubicación del armario</label>
+                                    <input
+                                        type="text"
+                                        id="cabinet"
+                                        name="cabinet"
+                                        value="Armario de tracción - Local Técnico"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="technician">Técnico responsable</label>
+                                    <input type="text" id="technician" name="technician" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3>Lecturas de baterías (posiciones 1 a 4)</h3>
+                            <div class="batteries-grid">
+                                <div class="battery-row" data-battery="1">
+                                    <div class="battery-row-header">Batería 1</div>
+                                    <div class="battery-inputs">
+                                        <div class="form-group">
+                                            <label for="voltage1">Voltaje (V)</label>
+                                            <input type="text" inputmode="decimal" id="voltage1" class="voltage" placeholder="Ej: 12.85" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="resistance1">Resistencia interna</label>
+                                            <input type="text" inputmode="decimal" id="resistance1" class="resistance" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="battery-row" data-battery="2">
+                                    <div class="battery-row-header">Batería 2</div>
+                                    <div class="battery-inputs">
+                                        <div class="form-group">
+                                            <label for="voltage2">Voltaje (V)</label>
+                                            <input type="text" inputmode="decimal" id="voltage2" class="voltage" placeholder="Ej: 12.82" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="resistance2">Resistencia interna</label>
+                                            <input type="text" inputmode="decimal" id="resistance2" class="resistance" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="battery-row" data-battery="3">
+                                    <div class="battery-row-header">Batería 3</div>
+                                    <div class="battery-inputs">
+                                        <div class="form-group">
+                                            <label for="voltage3">Voltaje (V)</label>
+                                            <input type="text" inputmode="decimal" id="voltage3" class="voltage" placeholder="Ej: 12.80" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="resistance3">Resistencia interna</label>
+                                            <input type="text" inputmode="decimal" id="resistance3" class="resistance" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="battery-row" data-battery="4">
+                                    <div class="battery-row-header">Batería 4</div>
+                                    <div class="battery-inputs">
+                                        <div class="form-group">
+                                            <label for="voltage4">Voltaje (V)</label>
+                                            <input type="text" inputmode="decimal" id="voltage4" class="voltage" placeholder="Ej: 12.84" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="resistance4">Resistencia interna</label>
+                                            <input type="text" inputmode="decimal" id="resistance4" class="resistance" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <h3>Reemplazos y observaciones</h3>
+                            <div class="form-group">
+                                <label>¿Se realizó reemplazo de baterías?</label>
+                                <div class="radio-group">
+                                    <label class="radio-option">
+                                        <input type="radio" name="replacement" value="no" checked>
+                                        <span>No</span>
+                                    </label>
+                                    <label class="radio-option">
+                                        <input type="radio" name="replacement" value="si">
+                                        <span>Sí</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="replacementDetails" class="replacement-details hidden">
+                                <div class="form-group">
+                                    <label for="replacementCount">Cantidad reemplazada (1 a 4)</label>
+                                    <input type="number" id="replacementCount" name="replacementCount" min="1" max="4" step="1">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 14px;">
+                                <label for="observations">Observaciones</label>
+                                <textarea id="observations" name="observations" rows="3" maxlength="1000"></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Guardar medición</button>
+                                <button type="reset" class="btn-secondary">Limpiar formulario</button>
+                            </div>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Vista: Historial -->
+                <section id="historial" class="view">
+                    <div class="section-heading">
+                        <h2>Historial de mediciones</h2>
+                        <p>Consulta el registro histórico de mediciones por línea, estación y rango de fechas.</p>
+                    </div>
+                </section>
+
+                <!-- Vista: Informes y reportes -->
+                <section id="reportes" class="view">
+                    <div class="section-heading">
+                        <h2>Informes y reportes</h2>
+                        <p>Indicadores operativos, evolución mensual, trazabilidad de reemplazos y exportación a Excel.</p>
+                    </div>
+                </section>
+            </main>
         </div>
+    </div>
 
-        <div class="menu-label">MENÚ PRINCIPAL</div>
-
-        <nav>
-
-            <button class="nav-item active" data-view="dashboard">
-                <span>▦</span> Panel principal
-            </button>
-
-            <button class="nav-item" data-view="mediciones">
-                <span>⊕</span> Registrar mediciones
-            </button>
-
-            <button class="nav-item" data-view="historial">
-                <span>◷</span> Historial
-            </button>
-
-            <button class="nav-item" data-view="reportes">
-                <span>▤</span> Informes y reportes
-            </button>
-
-        </nav>
-
-        <div class="sidebar-bottom">
-
-            <div class="system-status">
-                <span class="status-dot"></span>
-                Sistema en desarrollo
-            </div>
-
-            <span class="version">Versión 0.8.0</span>
-
-        </div>
-
-    </aside>
-
-
-    <!-- =====================================================
-         2. CONTENIDO PRINCIPAL
-    ====================================================== -->
-
-    <main class="main-content">
-
-        <header class="topbar">
-
-            <button class="mobile-menu" id="mobileMenu">
-                ☰
-            </button>
-
-            <div>
-                <h3 id="pageTitle">Panel principal</h3>
-                <p>Sistema de control de baterías</p>
-            </div>
-
-            <!-- ==========================================
-                 LOGOTIPOS INSTITUCIONALES
-                 Se mantienen comentados hasta su habilitación.
-            =========================================== -->
-
-            <!--
-            <div class="topbar-logos">
-
-                <img
-                    src="assets/logo-metro.png"
-                    alt="Logo Metro"
-                    class="topbar-logo logo-metro"
-                >
-
-                <img
-                    src="assets/mi-logo.png"
-                    alt="Logo personal"
-                    class="topbar-logo logo-personal"
-                >
-
-            </div>
-            -->
-
-            <div class="user-info">
-
-                <div class="avatar">T</div>
-                <span>Técnico</span>
-
-            </div>
-
-        </header>
-
-
-        <!-- =================================================
-             3. VISTAS DE LA APLICACIÓN
-        ================================================== -->
-
-        <section class="content">
-
-
-            <!-- =============================================
-                 3.1. PANEL PRINCIPAL
-            ============================================== -->
-
-            <div class="view active" id="dashboard">
-
-                <div class="welcome">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            MANTENIMIENTO PREVENTIVO
-                        </span>
-
-                        <h1>Control de baterías</h1>
-
-                        <p>
-                            Gestión de mediciones y trazabilidad
-                            de los armarios de tracción.
-                        </p>
-
-                    </div>
-
-                    <div class="welcome-icon">🔋</div>
-
-                </div>
-
-
-                <!-- INDICADORES PRINCIPALES -->
-
-                <div class="stats-grid">
-
-                    <div class="stat-card">
-                        <span>Mediciones registradas</span>
-                        <strong>0</strong>
-                        <small>Total histórico</small>
-                    </div>
-
-                    <div class="stat-card">
-                        <span>Baterías controladas</span>
-                        <strong>0</strong>
-                        <small>Total histórico</small>
-                    </div>
-
-                    <div class="stat-card">
-                        <span>Baterías reemplazadas</span>
-                        <strong>0</strong>
-                        <small>Total histórico</small>
-                    </div>
-
-                    <div class="stat-card">
-                        <span>Estaciones registradas</span>
-                        <strong>0</strong>
-                        <small>Con mediciones</small>
-                    </div>
-
-                </div>
-
-
-                <!-- ACTIVIDAD Y ACCESOS RÁPIDOS -->
-
-                <div class="dashboard-grid">
-
-                    <div class="panel">
-
-                        <div class="panel-heading">
-
-                            <div>
-                                <h3>Actividad del sistema</h3>
-                                <p>Resumen de registros</p>
-                            </div>
-
-                            <span class="panel-icon">◷</span>
-
-                        </div>
-
-                        <div class="empty-state">
-
-                            <div class="empty-icon">📊</div>
-
-                            <strong>Sin información registrada</strong>
-
-                            <p>
-                                Los indicadores aparecerán cuando
-                                comencemos a ingresar mediciones.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    <div class="panel quick-panel">
-
-                        <h3>Accesos rápidos</h3>
-                        <p>Funciones principales</p>
-
-                        <button
-                            class="quick-action"
-                            data-go="mediciones"
-                        >
-
-                            <span>＋</span>
-
-                            <div>
-                                <strong>Nueva medición</strong>
-                                <small>
-                                    Registrar baterías de una estación
-                                </small>
-                            </div>
-
-                            <b>›</b>
-
-                        </button>
-
-
-                        <button
-                            class="quick-action"
-                            data-go="historial"
-                        >
-
-                            <span>◷</span>
-
-                            <div>
-                                <strong>Consultar historial</strong>
-                                <small>
-                                    Revisar registros anteriores
-                                </small>
-                            </div>
-
-                            <b>›</b>
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- =============================================
-                 3.2. REGISTRO DE MEDICIONES
-            ============================================== -->
-
-            <div class="view" id="mediciones">
-
-                <div class="section-heading">
-
-                    <div>
-                        <span class="eyebrow">REGISTRO TÉCNICO</span>
-
-                        <h1>Nueva medición</h1>
-
-                        <p>
-                            Ingresa los datos de mantenimiento
-                            del armario de tracción.
-                        </p>
-                    </div>
-
-                </div>
-
-
-                <form id="measurementForm">
-
-
-                    <!-- IDENTIFICACIÓN DE LA INTERVENCIÓN -->
-
-                    <div class="panel form-panel">
-
-                        <div class="form-heading">
-
-                            <span class="number">01</span>
-
-                            <div>
-                                <h3>Identificación de la intervención</h3>
-                                <p>
-                                    Ubicación y antecedentes del mantenimiento.
-                                </p>
-                            </div>
-
-                        </div>
-
-
-                        <div class="form-grid">
-
-                            <div class="field">
-
-                                <label for="line">
-                                    Línea <span>*</span>
-                                </label>
-
-                                <select id="line" required>
-
-                                    <option value="">
-                                        Cargando líneas...
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-                            <div class="field">
-
-                                <label for="station">
-                                    Estación <span>*</span>
-                                </label>
-
-                                <select id="station" required disabled>
-
-                                    <option value="">
-                                        Primero selecciona una línea
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-                            <div class="field">
-
-                                <label>Ubicación del armario</label>
-
-                                <input
-                                    type="text"
-                                    value="Armario de tracción – Local Técnico"
-                                    readonly
-                                >
-
-                            </div>
-
-
-                            <div class="field">
-
-                                <label for="date">
-                                    Fecha de intervención <span>*</span>
-                                </label>
-
-                                <input
-                                    type="date"
-                                    id="date"
-                                    required
-                                >
-
-                            </div>
-
-
-                            <div class="field full-width">
-
-                                <label for="technician">
-                                    Técnico responsable <span>*</span>
-                                </label>
-
-                                <input
-                                    type="text"
-                                    id="technician"
-                                    placeholder="Nombre del técnico"
-                                    required
-                                >
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- MEDICIONES INDIVIDUALES -->
-
-                    <div class="panel form-panel">
-
-                        <div class="form-heading">
-
-                            <span class="number">02</span>
-
-                            <div>
-                                <h3>Mediciones individuales</h3>
-
-                                <p>
-                                    Registrar voltaje y resistencia
-                                    interna de cada batería.
-                                </p>
-                            </div>
-
-                        </div>
-
-
-                        <div class="measurement-note">
-
-                            Cada estación dispone de cuatro baterías
-                            identificadas del 1 al 4.
-
-                        </div>
-
-
-                        <div class="battery-list" id="batteryList">
-
-
-                            <!-- BATERÍA 1 -->
-
-                            <div class="battery-row" data-battery="1">
-
-                                <div class="battery-name">
-
-                                    <span class="battery-icon">🔋</span>
-
-                                    <div>
-                                        <strong>Batería 1</strong>
-                                        <small>Posición 01</small>
-                                    </div>
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Voltaje (V) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 13.45"
-                                        class="voltage"
-                                        required
-                                    >
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Resistencia (mΩ) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 18.50"
-                                        class="resistance"
-                                        required
-                                    >
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- BATERÍA 2 -->
-
-                            <div class="battery-row" data-battery="2">
-
-                                <div class="battery-name">
-
-                                    <span class="battery-icon">🔋</span>
-
-                                    <div>
-                                        <strong>Batería 2</strong>
-                                        <small>Posición 02</small>
-                                    </div>
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Voltaje (V) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 13.45"
-                                        class="voltage"
-                                        required
-                                    >
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Resistencia (mΩ) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 18.50"
-                                        class="resistance"
-                                        required
-                                    >
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- BATERÍA 3 -->
-
-                            <div class="battery-row" data-battery="3">
-
-                                <div class="battery-name">
-
-                                    <span class="battery-icon">🔋</span>
-
-                                    <div>
-                                        <strong>Batería 3</strong>
-                                        <small>Posición 03</small>
-                                    </div>
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Voltaje (V) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 13.45"
-                                        class="voltage"
-                                        required
-                                    >
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Resistencia (mΩ) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 18.50"
-                                        class="resistance"
-                                        required
-                                    >
-
-                                </div>
-
-                            </div>
-
-
-                            <!-- BATERÍA 4 -->
-
-                            <div class="battery-row" data-battery="4">
-
-                                <div class="battery-name">
-
-                                    <span class="battery-icon">🔋</span>
-
-                                    <div>
-                                        <strong>Batería 4</strong>
-                                        <small>Posición 04</small>
-                                    </div>
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Voltaje (V) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 13.45"
-                                        class="voltage"
-                                        required
-                                    >
-
-                                </div>
-
-                                <div class="field">
-
-                                    <label>
-                                        Resistencia (mΩ) <span>*</span>
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Ej. 18.50"
-                                        class="resistance"
-                                        required
-                                    >
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- GESTIÓN DE REEMPLAZOS -->
-
-                    <div class="panel form-panel">
-
-                        <div class="form-heading">
-
-                            <span class="number">03</span>
-
-                            <div>
-                                <h3>Gestión de reemplazos</h3>
-
-                                <p>
-                                    Identificar si hubo cambio de baterías
-                                    durante la intervención.
-                                </p>
-                            </div>
-
-                        </div>
-
-
-                        <div class="field">
-
-                            <label>¿Se realizaron reemplazos?</label>
-
-                            <div class="radio-options">
-
-                                <label>
-                                    <input
-                                        type="radio"
-                                        name="replacement"
-                                        value="no"
-                                        checked
-                                    >
-                                    No
-                                </label>
-
-                                <label>
-                                    <input
-                                        type="radio"
-                                        name="replacement"
-                                        value="si"
-                                    >
-                                    Sí
-                                </label>
-
-                            </div>
-
-                        </div>
-
-
-                        <div
-                            id="replacementDetails"
-                            class="replacement-details hidden"
-                        >
-
-                            <div class="field">
-
-                                <label for="replacementCount">
-                                    Cantidad de baterías reemplazadas
-                                </label>
-
-                                <select id="replacementCount">
-
-                                    <option value="">
-                                        Seleccionar cantidad
-                                    </option>
-
-                                    <option value="1">1 batería</option>
-                                    <option value="2">2 baterías</option>
-                                    <option value="3">3 baterías</option>
-                                    <option value="4">4 baterías</option>
-
-                                </select>
-
-                            </div>
-
-                            <p class="helper-text">
-
-                                En la siguiente etapa identificaremos
-                                individualmente las baterías retiradas
-                                y las nuevas.
-
-                            </p>
-
-                        </div>
-
-
-                        <!-- OBSERVACIONES -->
-
-                        <div class="field notes-field">
-
-                            <label for="observations">
-                                Observaciones técnicas
-                            </label>
-
-                            <textarea
-                                id="observations"
-                                rows="3"
-                                placeholder="Comentarios adicionales de la intervención..."
-                            ></textarea>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- ACCIONES DEL FORMULARIO -->
-
-                    <div class="form-actions">
-
-                        <button
-                            type="reset"
-                            class="btn-secondary"
-                        >
-                            Limpiar formulario
-                        </button>
-
-                        <button
-                            type="submit"
-                            class="btn-primary"
-                        >
-                            Guardar medición
-                        </button>
-
-                    </div>
-
-                </form>
-
-            </div>
-
-
-            <!-- =============================================
-                 3.3. HISTORIAL
-
-                 El contenido de esta vista es generado
-                 dinámicamente por app.js.
-
-                 Se conserva el encabezado original.
-                 No agregar paneles de próximamente porque
-                 el módulo ya tiene funcionalidad.
-            ============================================== -->
-
-            <div class="view" id="historial">
-
-                <div class="section-heading">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            CONSULTA DE INFORMACIÓN
-                        </span>
-
-                        <h1>Historial de mediciones</h1>
-
-                        <p>
-                            Consulta las intervenciones realizadas
-                            en las estaciones.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- =============================================
-                 3.4. INFORMES Y REPORTES
-
-                 El contenido de esta vista es generado
-                 dinámicamente por app.js.
-
-                 Incluye:
-                 - Filtros por fecha, línea y estación.
-                 - Indicadores generales.
-                 - Estadísticas por línea.
-                 - Estadísticas por estación.
-                 - Evolución mensual.
-                 - Promedios por posición de batería.
-
-                 No agregar paneles estáticos de próximamente.
-            ============================================== -->
-
-            <div class="view" id="reportes">
-
-                <div class="section-heading">
-
-                    <div>
-
-                        <span class="eyebrow">
-                            ANÁLISIS DE INFORMACIÓN
-                        </span>
-
-                        <h1>Informes y reportes</h1>
-
-                        <p>
-                            Indicadores de mantenimiento y
-                            exportación de datos.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-        </section>
-
-
-        <!-- =================================================
-             4. PIE DE PÁGINA
-        ================================================== -->
-
-        <footer>
-            Baterias_Medicion · Sistema de Gestión y
-            Trazabilidad de Baterías
-        </footer>
-
-    </main>
-
-</div>
-
-
-<!-- =====================================================
-     5. LIBRERÍA SUPABASE
-
-     Debe cargarse antes de app.js.
-====================================================== -->
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-
-<!-- =====================================================
-     6. APLICACIÓN PRINCIPAL
-====================================================== -->
-
-<script src="app.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js"></script>
 </body>
 </html>
