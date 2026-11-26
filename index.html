@@ -1,0 +1,891 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- =====================================================
+         BATERIAS_MEDICION
+         Sistema de gestión y trazabilidad de baterías
+         Versión 0.8.0
+    ====================================================== -->
+
+    <meta name="theme-color" content="#76121D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Baterias_Med">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon-180.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#D71920">
+
+    <title>Baterias_Medicion | Gestión técnica</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <!-- =====================================================
+         1. MENÚ LATERAL
+    ====================================================== -->
+
+    <aside class="sidebar" id="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">🔋</div>
+
+            <div>
+                <h2>Baterias_Medicion</h2>
+                <span>Gestión técnica</span>
+            </div>
+
+        </div>
+
+        <div class="menu-label">MENÚ PRINCIPAL</div>
+
+        <nav>
+
+            <button class="nav-item active" data-view="dashboard">
+                <span>▦</span> Panel principal
+            </button>
+
+            <button class="nav-item" data-view="mediciones">
+                <span>⊕</span> Registrar mediciones
+            </button>
+
+            <button class="nav-item" data-view="historial">
+                <span>◷</span> Historial
+            </button>
+
+            <button class="nav-item" data-view="reportes">
+                <span>▤</span> Informes y reportes
+            </button>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+
+            <div class="system-status">
+                <span class="status-dot"></span>
+                Sistema en desarrollo
+            </div>
+
+            <span class="version">Versión 0.8.0</span>
+
+        </div>
+
+    </aside>
+
+
+    <!-- =====================================================
+         2. CONTENIDO PRINCIPAL
+    ====================================================== -->
+
+    <main class="main-content">
+
+        <header class="topbar">
+
+            <button class="mobile-menu" id="mobileMenu">
+                ☰
+            </button>
+
+            <div>
+                <h3 id="pageTitle">Panel principal</h3>
+                <p>Sistema de control de baterías</p>
+            </div>
+
+            <!-- ==========================================
+                 LOGOTIPOS INSTITUCIONALES
+                 Se mantienen comentados hasta su habilitación.
+            =========================================== -->
+
+            <!--
+            <div class="topbar-logos">
+
+                <img
+                    src="assets/logo-metro.png"
+                    alt="Logo Metro"
+                    class="topbar-logo logo-metro"
+                >
+
+                <img
+                    src="assets/mi-logo.png"
+                    alt="Logo personal"
+                    class="topbar-logo logo-personal"
+                >
+
+            </div>
+            -->
+
+            <div class="user-info">
+
+                <div class="avatar">T</div>
+                <span>Técnico</span>
+
+            </div>
+
+        </header>
+
+
+        <!-- =================================================
+             3. VISTAS DE LA APLICACIÓN
+        ================================================== -->
+
+        <section class="content">
+
+
+            <!-- =============================================
+                 3.1. PANEL PRINCIPAL
+            ============================================== -->
+
+            <div class="view active" id="dashboard">
+
+                <div class="welcome">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            MANTENIMIENTO PREVENTIVO
+                        </span>
+
+                        <h1>Control de baterías</h1>
+
+                        <p>
+                            Gestión de mediciones y trazabilidad
+                            de los armarios de tracción.
+                        </p>
+
+                    </div>
+
+                    <div class="welcome-icon">🔋</div>
+
+                </div>
+
+
+                <!-- INDICADORES PRINCIPALES -->
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <span>Mediciones registradas</span>
+                        <strong>0</strong>
+                        <small>Total histórico</small>
+                    </div>
+
+                    <div class="stat-card">
+                        <span>Baterías controladas</span>
+                        <strong>0</strong>
+                        <small>Total histórico</small>
+                    </div>
+
+                    <div class="stat-card">
+                        <span>Baterías reemplazadas</span>
+                        <strong>0</strong>
+                        <small>Total histórico</small>
+                    </div>
+
+                    <div class="stat-card">
+                        <span>Estaciones registradas</span>
+                        <strong>0</strong>
+                        <small>Con mediciones</small>
+                    </div>
+
+                </div>
+
+
+                <!-- ACTIVIDAD Y ACCESOS RÁPIDOS -->
+
+                <div class="dashboard-grid">
+
+                    <div class="panel">
+
+                        <div class="panel-heading">
+
+                            <div>
+                                <h3>Actividad del sistema</h3>
+                                <p>Resumen de registros</p>
+                            </div>
+
+                            <span class="panel-icon">◷</span>
+
+                        </div>
+
+                        <div class="empty-state">
+
+                            <div class="empty-icon">📊</div>
+
+                            <strong>Sin información registrada</strong>
+
+                            <p>
+                                Los indicadores aparecerán cuando
+                                comencemos a ingresar mediciones.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="panel quick-panel">
+
+                        <h3>Accesos rápidos</h3>
+                        <p>Funciones principales</p>
+
+                        <button
+                            class="quick-action"
+                            data-go="mediciones"
+                        >
+
+                            <span>＋</span>
+
+                            <div>
+                                <strong>Nueva medición</strong>
+                                <small>
+                                    Registrar baterías de una estación
+                                </small>
+                            </div>
+
+                            <b>›</b>
+
+                        </button>
+
+
+                        <button
+                            class="quick-action"
+                            data-go="historial"
+                        >
+
+                            <span>◷</span>
+
+                            <div>
+                                <strong>Consultar historial</strong>
+                                <small>
+                                    Revisar registros anteriores
+                                </small>
+                            </div>
+
+                            <b>›</b>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =============================================
+                 3.2. REGISTRO DE MEDICIONES
+            ============================================== -->
+
+            <div class="view" id="mediciones">
+
+                <div class="section-heading">
+
+                    <div>
+                        <span class="eyebrow">REGISTRO TÉCNICO</span>
+
+                        <h1>Nueva medición</h1>
+
+                        <p>
+                            Ingresa los datos de mantenimiento
+                            del armario de tracción.
+                        </p>
+                    </div>
+
+                </div>
+
+
+                <form id="measurementForm">
+
+
+                    <!-- IDENTIFICACIÓN DE LA INTERVENCIÓN -->
+
+                    <div class="panel form-panel">
+
+                        <div class="form-heading">
+
+                            <span class="number">01</span>
+
+                            <div>
+                                <h3>Identificación de la intervención</h3>
+                                <p>
+                                    Ubicación y antecedentes del mantenimiento.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-grid">
+
+                            <div class="field">
+
+                                <label for="line">
+                                    Línea <span>*</span>
+                                </label>
+
+                                <select id="line" required>
+
+                                    <option value="">
+                                        Cargando líneas...
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="field">
+
+                                <label for="station">
+                                    Estación <span>*</span>
+                                </label>
+
+                                <select id="station" required disabled>
+
+                                    <option value="">
+                                        Primero selecciona una línea
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+
+                            <div class="field">
+
+                                <label>Ubicación del armario</label>
+
+                                <input
+                                    type="text"
+                                    value="Armario de tracción – Local Técnico"
+                                    readonly
+                                >
+
+                            </div>
+
+
+                            <div class="field">
+
+                                <label for="date">
+                                    Fecha de intervención <span>*</span>
+                                </label>
+
+                                <input
+                                    type="date"
+                                    id="date"
+                                    required
+                                >
+
+                            </div>
+
+
+                            <div class="field full-width">
+
+                                <label for="technician">
+                                    Técnico responsable <span>*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    id="technician"
+                                    placeholder="Nombre del técnico"
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- MEDICIONES INDIVIDUALES -->
+
+                    <div class="panel form-panel">
+
+                        <div class="form-heading">
+
+                            <span class="number">02</span>
+
+                            <div>
+                                <h3>Mediciones individuales</h3>
+
+                                <p>
+                                    Registrar voltaje y resistencia
+                                    interna de cada batería.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="measurement-note">
+
+                            Cada estación dispone de cuatro baterías
+                            identificadas del 1 al 4.
+
+                        </div>
+
+
+                        <div class="battery-list" id="batteryList">
+
+
+                            <!-- BATERÍA 1 -->
+
+                            <div class="battery-row" data-battery="1">
+
+                                <div class="battery-name">
+
+                                    <span class="battery-icon">🔋</span>
+
+                                    <div>
+                                        <strong>Batería 1</strong>
+                                        <small>Posición 01</small>
+                                    </div>
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Voltaje (V) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 13.45"
+                                        class="voltage"
+                                        required
+                                    >
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Resistencia (mΩ) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 18.50"
+                                        class="resistance"
+                                        required
+                                    >
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- BATERÍA 2 -->
+
+                            <div class="battery-row" data-battery="2">
+
+                                <div class="battery-name">
+
+                                    <span class="battery-icon">🔋</span>
+
+                                    <div>
+                                        <strong>Batería 2</strong>
+                                        <small>Posición 02</small>
+                                    </div>
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Voltaje (V) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 13.45"
+                                        class="voltage"
+                                        required
+                                    >
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Resistencia (mΩ) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 18.50"
+                                        class="resistance"
+                                        required
+                                    >
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- BATERÍA 3 -->
+
+                            <div class="battery-row" data-battery="3">
+
+                                <div class="battery-name">
+
+                                    <span class="battery-icon">🔋</span>
+
+                                    <div>
+                                        <strong>Batería 3</strong>
+                                        <small>Posición 03</small>
+                                    </div>
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Voltaje (V) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 13.45"
+                                        class="voltage"
+                                        required
+                                    >
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Resistencia (mΩ) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 18.50"
+                                        class="resistance"
+                                        required
+                                    >
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- BATERÍA 4 -->
+
+                            <div class="battery-row" data-battery="4">
+
+                                <div class="battery-name">
+
+                                    <span class="battery-icon">🔋</span>
+
+                                    <div>
+                                        <strong>Batería 4</strong>
+                                        <small>Posición 04</small>
+                                    </div>
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Voltaje (V) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 13.45"
+                                        class="voltage"
+                                        required
+                                    >
+
+                                </div>
+
+                                <div class="field">
+
+                                    <label>
+                                        Resistencia (mΩ) <span>*</span>
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Ej. 18.50"
+                                        class="resistance"
+                                        required
+                                    >
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- GESTIÓN DE REEMPLAZOS -->
+
+                    <div class="panel form-panel">
+
+                        <div class="form-heading">
+
+                            <span class="number">03</span>
+
+                            <div>
+                                <h3>Gestión de reemplazos</h3>
+
+                                <p>
+                                    Identificar si hubo cambio de baterías
+                                    durante la intervención.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label>¿Se realizaron reemplazos?</label>
+
+                            <div class="radio-options">
+
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="replacement"
+                                        value="no"
+                                        checked
+                                    >
+                                    No
+                                </label>
+
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="replacement"
+                                        value="si"
+                                    >
+                                    Sí
+                                </label>
+
+                            </div>
+
+                        </div>
+
+
+                        <div
+                            id="replacementDetails"
+                            class="replacement-details hidden"
+                        >
+
+                            <div class="field">
+
+                                <label for="replacementCount">
+                                    Cantidad de baterías reemplazadas
+                                </label>
+
+                                <select id="replacementCount">
+
+                                    <option value="">
+                                        Seleccionar cantidad
+                                    </option>
+
+                                    <option value="1">1 batería</option>
+                                    <option value="2">2 baterías</option>
+                                    <option value="3">3 baterías</option>
+                                    <option value="4">4 baterías</option>
+
+                                </select>
+
+                            </div>
+
+                            <p class="helper-text">
+
+                                En la siguiente etapa identificaremos
+                                individualmente las baterías retiradas
+                                y las nuevas.
+
+                            </p>
+
+                        </div>
+
+
+                        <!-- OBSERVACIONES -->
+
+                        <div class="field notes-field">
+
+                            <label for="observations">
+                                Observaciones técnicas
+                            </label>
+
+                            <textarea
+                                id="observations"
+                                rows="3"
+                                placeholder="Comentarios adicionales de la intervención..."
+                            ></textarea>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ACCIONES DEL FORMULARIO -->
+
+                    <div class="form-actions">
+
+                        <button
+                            type="reset"
+                            class="btn-secondary"
+                        >
+                            Limpiar formulario
+                        </button>
+
+                        <button
+                            type="submit"
+                            class="btn-primary"
+                        >
+                            Guardar medición
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+
+            <!-- =============================================
+                 3.3. HISTORIAL
+
+                 El contenido de esta vista es generado
+                 dinámicamente por app.js.
+
+                 Se conserva el encabezado original.
+                 No agregar paneles de próximamente porque
+                 el módulo ya tiene funcionalidad.
+            ============================================== -->
+
+            <div class="view" id="historial">
+
+                <div class="section-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            CONSULTA DE INFORMACIÓN
+                        </span>
+
+                        <h1>Historial de mediciones</h1>
+
+                        <p>
+                            Consulta las intervenciones realizadas
+                            en las estaciones.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =============================================
+                 3.4. INFORMES Y REPORTES
+
+                 El contenido de esta vista es generado
+                 dinámicamente por app.js.
+
+                 Incluye:
+                 - Filtros por fecha, línea y estación.
+                 - Indicadores generales.
+                 - Estadísticas por línea.
+                 - Estadísticas por estación.
+                 - Evolución mensual.
+                 - Promedios por posición de batería.
+
+                 No agregar paneles estáticos de próximamente.
+            ============================================== -->
+
+            <div class="view" id="reportes">
+
+                <div class="section-heading">
+
+                    <div>
+
+                        <span class="eyebrow">
+                            ANÁLISIS DE INFORMACIÓN
+                        </span>
+
+                        <h1>Informes y reportes</h1>
+
+                        <p>
+                            Indicadores de mantenimiento y
+                            exportación de datos.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+        <!-- =================================================
+             4. PIE DE PÁGINA
+        ================================================== -->
+
+        <footer>
+            Baterias_Medicion · Sistema de Gestión y
+            Trazabilidad de Baterías
+        </footer>
+
+    </main>
+
+</div>
+
+
+<!-- =====================================================
+     5. LIBRERÍA SUPABASE
+
+     Debe cargarse antes de app.js.
+====================================================== -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+
+<!-- =====================================================
+     6. APLICACIÓN PRINCIPAL
+====================================================== -->
+
+<script src="app.js"></script>
+
+</body>
+</html>
