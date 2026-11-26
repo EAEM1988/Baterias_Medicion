@@ -10,6 +10,8 @@
    - Confirmación explícita para eliminar registros.
    - Auditoría estricta en BD vía editar_medicion_completa y
      eliminar_medicion_completa.
+   - Gestión completa de técnicos para administrador (habilitar,
+     desactivar, reactivar y eliminar/baja lógica).
    - Conserva registro provisional, reportes, historial, mediciones y auth.
 
    SEGURIDAD:
@@ -561,6 +563,7 @@ dynamicStyles.textContent = `
         display: flex;
         align-items: center;
         gap: 7px;
+        flex-wrap: wrap;
         flex-shrink: 0;
     }
 
@@ -582,6 +585,16 @@ dynamicStyles.textContent = `
     .admin-action-danger {
         border-color: #D71920;
         color: #D71920;
+    }
+
+    .admin-action-delete {
+        border: 1px solid #8E121A;
+        background: #FFF5F5;
+        color: #8E121A;
+    }
+
+    .admin-action-delete:hover {
+        background: #FCEBED;
     }
 
     .admin-action-success {
@@ -1173,7 +1186,7 @@ async function loadUserProfile(user) {
         data.estado_acceso === "provisional" && !data.activo;
 
     if (!data.activo && !provisional) {
-        throw new Error("Tu cuenta se encuentra desactivada. Contacta al administrador.");
+        throw new Error("Tu cuenta se encuentra desactivada o eliminada. Contacta al administrador.");
     }
 
     if (
@@ -1556,6 +1569,10 @@ function showView(viewName) {
 
     if (viewName === "reportes" && isFullActiveProfile()) {
         initializeReportsView();
+    }
+
+    if (viewName === "administracion" && isAdminUser()) {
+        loadTechnicians();
     }
 
 }
@@ -2256,8 +2273,6 @@ function translateMeasurementError(error) {
         return "Tu sesión no es válida. Inicia sesión nuevamente.";
     }
 
-    // ...resto de validaciones de translateMeasurementError...
-
     return error.message ||
         "Ocurrió un error al guardar la medición.";
 
@@ -2428,10 +2443,7 @@ let adminCreateMessage = null;
 
 function setupAdminModule() {
 
-    if (
-        currentProfile?.rol !== "administrador" ||
-        !isFullActiveProfile(currentProfile)
-    ) {
+    if (!isAdminUser(currentProfile)) {
 
         const existingButton =
             document.getElementById("adminNavButton");
@@ -2449,6 +2461,7 @@ function setupAdminModule() {
     }
 
     if (document.getElementById("adminNavButton")) {
+        loadTechnicians();
         return;
     }
 
@@ -2496,7 +2509,8 @@ function setupAdminModule() {
 
             <p class="admin-description">
                 Gestiona las cuentas de acceso del personal
-                autorizado y habilita técnicos con acceso provisional.
+                autorizado, habilita técnicos provisionales o
+                da de baja / elimina técnicos conservando su historial.
             </p>
 
             <div class="admin-grid">
@@ -2595,8 +2609,8 @@ function setupAdminModule() {
                         <strong>Activo:</strong>
                         accede a panel principal, mediciones, historial e informes.
                         <br><br>
-                        <strong>Inactivo:</strong>
-                        no puede iniciar sesión; sus registros se conservan.
+                        <strong>Inactivo / Eliminado:</strong>
+                        no puede iniciar sesión; sus registros históricos se conservan.
                     </p>
 
                 </div>
@@ -2768,7 +2782,7 @@ async function createTechnician(event) {
 
     event.preventDefault();
 
-    if (!canAccessView("administracion")) {
+    if (!isAdminUser()) {
 
         alert("No tienes permisos para crear técnicos.");
 
@@ -2873,7 +2887,7 @@ async function createTechnician(event) {
 async function loadTechnicians() {
 
     if (
-        !canAccessView("administracion") ||
+        !isAdminUser() ||
         !adminTechnicianList
     ) {
         return;
@@ -2962,6 +2976,10 @@ function createTechnicianRow(technician) {
         technician.estado_acceso === "provisional" &&
         !technician.activo;
 
+    const isDeleted =
+        technician.estado_acceso === "eliminado" &&
+        !technician.activo;
+
     const row = document.createElement("div");
 
     row.className =
@@ -3001,6 +3019,10 @@ function createTechnicianRow(technician) {
         status.className =
             "admin-status-pill admin-status-active";
         status.textContent = "ACTIVO";
+    } else if (isDeleted) {
+        status.className =
+            "admin-status-pill admin-status-inactive";
+        status.textContent = "ELIMINADO";
     } else {
         status.className =
             "admin-status-pill admin-status-inactive";
@@ -3082,6 +3104,22 @@ function createTechnicianRow(technician) {
             actions.appendChild(actionButton);
         }
 
+        if (!isDeleted) {
+            const deleteButton =
+                document.createElement("button");
+
+            deleteButton.type = "button";
+            deleteButton.className =
+                "admin-action-button admin-action-delete";
+            deleteButton.textContent = "Eliminar";
+
+            deleteButton.addEventListener("click", () => {
+                deleteTechnicianRecord(technician);
+            });
+
+            actions.appendChild(deleteButton);
+        }
+
     }
 
     row.appendChild(actions);
@@ -3092,12 +3130,12 @@ function createTechnicianRow(technician) {
 
 
 /* =========================================================
-   32. HABILITAR, DESACTIVAR Y REACTIVAR TÉCNICO
+   32. HABILITAR, DESACTIVAR, REACTIVAR Y ELIMINAR TÉCNICO
 ========================================================= */
 
 async function enableProvisionalTechnician(technician) {
 
-    if (!canAccessView("administracion")) {
+    if (!isAdminUser()) {
         return;
     }
 
@@ -3147,7 +3185,7 @@ async function enableProvisionalTechnician(technician) {
 
 async function deactivateTechnician(technician) {
 
-    if (!canAccessView("administracion")) {
+    if (!isAdminUser()) {
         return;
     }
 
@@ -3198,7 +3236,7 @@ async function deactivateTechnician(technician) {
 
 async function reactivateTechnician(technician) {
 
-    if (!canAccessView("administracion")) {
+    if (!isAdminUser()) {
         return;
     }
 
@@ -3238,6 +3276,87 @@ async function reactivateTechnician(technician) {
 
         alert(
             "No fue posible reactivar al técnico.\n\n" +
+            error.message
+        );
+
+    }
+
+}
+
+
+async function deleteTechnicianRecord(technician) {
+
+    if (!isAdminUser()) {
+        alert("Solo un administrador puede eliminar técnicos.");
+        return;
+    }
+
+    if (!technician?.id || technician.id === currentUser?.id) {
+        alert("No es posible eliminar este registro.");
+        return;
+    }
+
+    const confirmed = confirm(
+        `¿Seguro que deseas ELIMINAR al técnico ${technician.nombres} ` +
+        `${technician.apellidos} (${technician.correo})?\n\n` +
+        "Se revocará su acceso activo (activo = false, estado_acceso = 'eliminado') " +
+        "y se conservarán sus mediciones y auditorías históricas."
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        let handledByFunction = false;
+
+        try {
+            const fnResult = await invokeAdminFunction({
+                accion: "eliminar",
+                tecnico_id: technician.id
+            });
+            handledByFunction = true;
+            alert(fnResult.message || "Técnico eliminado correctamente.");
+        } catch (fnError) {
+            const msg = String(fnError?.message || "").toLowerCase();
+            if (
+                msg.includes("not found") ||
+                msg.includes("404") ||
+                msg.includes("acción") ||
+                msg.includes("accion") ||
+                msg.includes("no soportada") ||
+                msg.includes("unsupported")
+            ) {
+                const { error: updateError } = await supabaseClient
+                    .from("tecnicos")
+                    .update({
+                        activo: false,
+                        estado_acceso: "eliminado"
+                    })
+                    .eq("id", technician.id);
+
+                if (updateError) {
+                    throw updateError;
+                }
+
+                handledByFunction = true;
+                alert("Técnico eliminado correctamente.");
+            } else {
+                throw fnError;
+            }
+        }
+
+        if (handledByFunction) {
+            await loadTechnicians();
+        }
+
+    } catch (error) {
+
+        console.error("Error al eliminar técnico:", error);
+
+        alert(
+            "No fue posible eliminar al técnico.\n\n" +
             error.message
         );
 
@@ -4613,7 +4732,6 @@ async function openEditMeasurementModal(record) {
     editModalBackdrop.hidden = false;
 
     try {
-        // Intentar resolver linea_id y estacion_id si no vienen directamente en record
         let resolvedLineId = record.linea_id || "";
         let resolvedStationId = record.estacion_id || "";
 
@@ -5945,10 +6063,26 @@ async function initializeApp() {
 
 
 initializeApp();
-{
-    if ("serviceWorker" in navigator) {
+
+if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./service-worker.js").catch(err => {
         console.warn("No se pudo registrar el Service Worker:", err);
     });
 }
-}
+/* 
+```[cite: 2]
+
+### Qué se corrigió y agregó en este archivo
+
+* **Botón `Eliminar` para administradores (`deleteTechnicianRecord`):** Añadido en cada fila de técnicos gestionables (`rol === "tecnico"` y distinto al usuario actual), con confirmación explícita, actualización de `activo = false` y `estado_acceso = "eliminado"`, y respaldo a `supabaseClient.from("tecnicos").update(...)` si la Edge Function `quick-endpoint` no maneja la acción `"eliminar"`[cite: 2].
+* **Etiqueta `ELIMINADO` en el listado:** Cuando un técnico queda con `estado_acceso === "eliminado"` y `activo === false`, se muestra claramente como **ELIMINADO** y se oculta el botón **Eliminar** repetido, manteniendo **Reactivar** por si necesitas restaurar su acceso[cite: 2].
+* **Sincronización al abrir `administracion`:** Al entrar a la vista `administracion` desde `showView`, se refresca `loadTechnicians()` para mostrar siempre el estado actualizado en base de datos[cite: 2].
+* **Cierre limpio del registro del Service Worker:** Se corrigió la llave envolvente extra alrededor de `navigator.serviceWorker.register("./service-worker.js")` al final del script[cite: 2].
+
+### Verificación rápida antes de avanzar a la Etapa 14
+
+1. Guarda este código en tu archivo JS principal en Visual Studio Code, actualiza `CACHE_NAME` en `service-worker.js` y sube los cambios a `EAEM1988/Baterias_Medicion` con `git add .`, `git commit` y `git push`[cite: 2].
+2. Abre `[https://eaem1988.github.io/Baterias_Medicion/](https://eaem1988.github.io/Baterias_Medicion/)` con tu cuenta de administrador, entra a **Administración** y prueba eliminar un técnico de prueba[cite: 2].
+   * *Verificación:* Aparece la confirmación, el técnico pasa a estado **ELIMINADO** y, si intenta iniciar sesión, se bloquea el acceso conservando sus registros anteriores[cite: 2].
+
+¿Quedó probada la eliminación de técnicos en `[https://eaem1988.github.io/Baterias_Medicion/](https://eaem1988.github.io/Baterias_Medicion/)`, o pasamos ya a redactar la **Etapa 14** (Manual de Usuario, Manual Técnico y Manual de Mantenimiento)?*/
