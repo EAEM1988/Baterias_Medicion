@@ -11,8 +11,9 @@
    - Auditoría estricta en BD vía editar_medicion_completa y
      eliminar_medicion_completa.
    - Gestión completa de técnicos para administrador (habilitar,
-     desactivar, reactivar y eliminar/baja lógica).
+     desactivar, reactivar y eliminar perfil/cuenta Auth).
    - Conserva registro provisional, reportes, historial, mediciones y auth.
+   - Exportación a Excel (.xlsx) ordenada en Informes y reportes.
 
    SEGURIDAD:
    - La identidad del usuario se obtiene desde auth.uid().
@@ -1310,6 +1311,7 @@ async function showAuthenticatedApp(user) {
         setupAdminModule();
 
         await loadLines();
+        applyDefaultObservations();
 
         if (!provisional) {
             setupHistoryModule();
@@ -1871,8 +1873,17 @@ replacementRadios.forEach(radio => {
 
 
 /* =========================================================
-   17. MENSAJES DEL FORMULARIO DE MEDICIONES
+   17. MENSAJES DEL FORMULARIO DE MEDICIONES Y OBSERVACIONES
 ========================================================= */
+
+const DEFAULT_OBSERVATIONS_TEXT = "Uso de Hioki BT3554-50 Bterry tester";
+
+function applyDefaultObservations() {
+    const observationsEl = document.getElementById("observations");
+    if (observationsEl) {
+        observationsEl.value = DEFAULT_OBSERVATIONS_TEXT;
+    }
+}
 
 let measurementSaveMessage = null;
 
@@ -1938,6 +1949,11 @@ function clearMeasurementMessage() {
 ========================================================= */
 
 function getCabinetLocation() {
+
+    const cabinetEl = document.getElementById("cabinet");
+    if (cabinetEl && cabinetEl.value.trim()) {
+        return cabinetEl.value.trim();
+    }
 
     const inputs =
         measurementForm.querySelectorAll("input");
@@ -2509,8 +2525,9 @@ function setupAdminModule() {
 
             <p class="admin-description">
                 Gestiona las cuentas de acceso del personal
-                autorizado, habilita técnicos provisionales o
-                da de baja / elimina técnicos conservando su historial.
+                autorizado, habilita técnicos provisionales,
+                desactiva/reactiva cuentas o elimina técnicos
+                para liberar su registro.
             </p>
 
             <div class="admin-grid">
@@ -2609,8 +2626,11 @@ function setupAdminModule() {
                         <strong>Activo:</strong>
                         accede a panel principal, mediciones, historial e informes.
                         <br><br>
-                        <strong>Inactivo / Eliminado:</strong>
+                        <strong>Inactivo:</strong>
                         no puede iniciar sesión; sus registros históricos se conservan.
+                        <br><br>
+                        <strong>Eliminado:</strong>
+                        se borra su perfil y su cuenta para que desaparezca del listado y pueda volver a registrarse.
                     </p>
 
                 </div>
@@ -3297,10 +3317,10 @@ async function deleteTechnicianRecord(technician) {
     }
 
     const confirmed = confirm(
-        `¿Seguro que deseas ELIMINAR al técnico ${technician.nombres} ` +
+        `¿Seguro que deseas ELIMINAR definitivamente a ${technician.nombres} ` +
         `${technician.apellidos} (${technician.correo})?\n\n` +
-        "Se revocará su acceso activo (activo = false, estado_acceso = 'eliminado') " +
-        "y se conservarán sus mediciones y auditorías históricas."
+        "Se eliminará su perfil y su cuenta de acceso para que desaparezca del listado " +
+        "y pueda volver a registrarse con su correo."
     );
 
     if (!confirmed) {
@@ -3309,47 +3329,17 @@ async function deleteTechnicianRecord(technician) {
 
     try {
 
-        let handledByFunction = false;
+        const result = await invokeAdminFunction({
+            accion: "eliminar",
+            tecnico_id: technician.id
+        });
 
-        try {
-            const fnResult = await invokeAdminFunction({
-                accion: "eliminar",
-                tecnico_id: technician.id
-            });
-            handledByFunction = true;
-            alert(fnResult.message || "Técnico eliminado correctamente.");
-        } catch (fnError) {
-            const msg = String(fnError?.message || "").toLowerCase();
-            if (
-                msg.includes("not found") ||
-                msg.includes("404") ||
-                msg.includes("acción") ||
-                msg.includes("accion") ||
-                msg.includes("no soportada") ||
-                msg.includes("unsupported")
-            ) {
-                const { error: updateError } = await supabaseClient
-                    .from("tecnicos")
-                    .update({
-                        activo: false,
-                        estado_acceso: "eliminado"
-                    })
-                    .eq("id", technician.id);
+        alert(
+            result.message ||
+            "Técnico y cuenta eliminados correctamente. Ya puede volver a registrarse."
+        );
 
-                if (updateError) {
-                    throw updateError;
-                }
-
-                handledByFunction = true;
-                alert("Técnico eliminado correctamente.");
-            } else {
-                throw fnError;
-            }
-        }
-
-        if (handledByFunction) {
-            await loadTechnicians();
-        }
+        await loadTechnicians();
 
     } catch (error) {
 
@@ -5250,13 +5240,410 @@ function renderDashboardActivity(records, container, message = "") {
 
 
 /* =========================================================
-   36. MÓDULO DE INFORMES Y ESTADÍSTICAS (v0.9.1)
+   36. MÓDULO DE INFORMES, ESTADÍSTICAS Y EXCEL (v0.9.3)
 ========================================================= */
 
 let reportsContainer = null;
 let reportsInitialized = false;
 let reportsLoading = false;
 let reportsElements = {};
+
+let lastReportsData = null;
+let lastMonthlyRows = [];
+let lastReportFilterMeta = {
+    fechaDesde: "",
+    fechaHasta: "",
+    linea: "Todas las líneas",
+    estacion: "Todas las estaciones"
+};
+
+function escapeXml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+
+function getExcelColumnLetter(colIndexZeroBased) {
+    let index = colIndexZeroBased;
+    let letter = "";
+    while (index >= 0) {
+        letter = String.fromCharCode((index % 26) + 65) + letter;
+        index = Math.floor(index / 26) - 1;
+    }
+    return letter;
+}
+
+function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+        crc ^= bytes[i];
+        for (let bit = 0; bit < 8; bit++) {
+            const mask = -(crc & 1);
+            crc = (crc >>> 1) ^ (0xedb88320 & mask);
+        }
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createZipArchive(entries) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+
+    entries.forEach(entry => {
+        const nameBytes = encoder.encode(entry.name);
+        const dataBytes = entry.data instanceof Uint8Array
+            ? entry.data
+            : encoder.encode(String(entry.data));
+        const checksum = crc32(dataBytes);
+
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const localView = new DataView(localHeader.buffer);
+        localView.setUint32(0, 0x04034b50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(6, 0x0800, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint16(10, 0, true);
+        localView.setUint16(12, 0x0021, true);
+        localView.setUint32(14, checksum, true);
+        localView.setUint32(18, dataBytes.length, true);
+        localView.setUint32(22, dataBytes.length, true);
+        localView.setUint16(26, nameBytes.length, true);
+        localView.setUint16(28, 0, true);
+        localHeader.set(nameBytes, 30);
+
+        localParts.push(localHeader, dataBytes);
+
+        const centralHeader = new Uint8Array(46 + nameBytes.length);
+        const centralView = new DataView(centralHeader.buffer);
+        centralView.setUint32(0, 0x02014b50, true);
+        centralView.setUint16(4, 20, true);
+        centralView.setUint16(6, 20, true);
+        centralView.setUint16(8, 0x0800, true);
+        centralView.setUint16(10, 0, true);
+        centralView.setUint16(12, 0, true);
+        centralView.setUint16(14, 0x0021, true);
+        centralView.setUint32(16, checksum, true);
+        centralView.setUint32(20, dataBytes.length, true);
+        centralView.setUint32(24, dataBytes.length, true);
+        centralView.setUint16(28, nameBytes.length, true);
+        centralView.setUint16(30, 0, true);
+        centralView.setUint16(32, 0, true);
+        centralView.setUint16(34, 0, true);
+        centralView.setUint16(36, 0, true);
+        centralView.setUint32(38, 0, true);
+        centralView.setUint32(42, offset, true);
+        centralHeader.set(nameBytes, 46);
+
+        centralParts.push(centralHeader);
+        offset += localHeader.length + dataBytes.length;
+    });
+
+    const centralSize = centralParts.reduce((acc, part) => acc + part.length, 0);
+    const eocd = new Uint8Array(22);
+    const eocdView = new DataView(eocd.buffer);
+    eocdView.setUint32(0, 0x06054b50, true);
+    eocdView.setUint16(4, 0, true);
+    eocdView.setUint16(6, 0, true);
+    eocdView.setUint16(8, entries.length, true);
+    eocdView.setUint16(10, entries.length, true);
+    eocdView.setUint32(12, centralSize, true);
+    eocdView.setUint32(16, offset, true);
+    eocdView.setUint16(20, 0, true);
+
+    const totalLength = offset + centralSize + eocd.length;
+    const output = new Uint8Array(totalLength);
+    let cursor = 0;
+
+    [...localParts, ...centralParts, eocd].forEach(chunk => {
+        output.set(chunk, cursor);
+        cursor += chunk.length;
+    });
+
+    return output;
+}
+
+function buildWorksheetXml(sheetTitle, headers, rows) {
+    const safeTitle = escapeXml(sheetTitle);
+    const colCount = Math.max(1, headers.length);
+    const lastColLetter = getExcelColumnLetter(colCount - 1);
+
+    const colsXml = headers.map((_, idx) => {
+        const maxLen = rows.reduce((max, r) => {
+            const val = r[idx] === null || r[idx] === undefined ? "" : String(r[idx]);
+            return Math.max(max, val.length);
+        }, String(headers[idx] || "").length);
+        const width = Math.min(44, Math.max(13, maxLen + 5));
+        return `<col min="${idx + 1}" max="${idx + 1}" width="${width}" customWidth="1"/>`;
+    }).join("");
+
+    const formatCell = (value, ref, styleId) => {
+        if (typeof value === "number" && Number.isFinite(value)) {
+            return `<c r="${ref}" s="${styleId}"><v>${value}</v></c>`;
+        }
+        const text = value === null || value === undefined ? "—" : String(value);
+        return `<c r="${ref}" t="inlineStr" s="${styleId}"><is><t xml:space="preserve">${escapeXml(text)}</t></is></c>`;
+    };
+
+    const titleRow = `<row r="1" ht="24" customHeight="1">${formatCell(safeTitle, "A1", 1)}</row>`;
+
+    const headerCells = headers.map((h, cIdx) => {
+        const ref = `${getExcelColumnLetter(cIdx)}3`;
+        return formatCell(h, ref, 2);
+    }).join("");
+    const headerRow = `<row r="3" ht="22" customHeight="1">${headerCells}</row>`;
+
+    const bodyRows = rows.map((row, rIdx) => {
+        const excelRowNum = rIdx + 4;
+        const isZebra = rIdx % 2 === 1;
+        const cells = Array.from({ length: colCount }, (_, cIdx) => {
+            const ref = `${getExcelColumnLetter(cIdx)}${excelRowNum}`;
+            const val = row[cIdx];
+            const isNum = typeof val === "number" && Number.isFinite(val);
+            const styleId = isNum
+                ? (isZebra ? 5 : 4)
+                : (isZebra ? 6 : 3);
+            return formatCell(val, ref, styleId);
+        }).join("");
+        return `<row r="${excelRowNum}" ht="19" customHeight="1">${cells}</row>`;
+    }).join("");
+
+    const autoFilterRef = rows.length > 0 ? `A3:${lastColLetter}${rows.length + 3}` : `A3:${lastColLetter}3`;
+
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <sheetViews>
+        <sheetView tabSelected="1" workbookViewId="0">
+            <pane ySplit="3" topLeftCell="A4" activePane="bottomLeft" state="frozen"/>
+        </sheetView>
+    </sheetViews>
+    <cols>${colsXml}</cols>
+    <sheetData>
+        ${titleRow}
+        ${headerRow}
+        ${bodyRows}
+    </sheetData>
+    <autoFilter ref="${autoFilterRef}"/>
+</worksheet>`;
+}
+
+function generateXlsxBlob(sheets) {
+    const contentTypesOverride = sheets.map((_, idx) =>
+        `<Override PartName="/xl/worksheets/sheet${idx + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+    ).join("");
+
+    const workbookSheets = sheets.map((s, idx) =>
+        `<sheet name="${escapeXml(s.name.slice(0, 31))}" sheetId="${idx + 1}" r:id="rId${idx + 1}"/>`
+    ).join("");
+
+    const workbookRels = sheets.map((_, idx) =>
+        `<Relationship Id="rId${idx + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${idx + 1}.xml"/>`
+    ).join("");
+
+    const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <fonts count="4">
+        <font><sz val="11"/><name val="Calibri"/><color rgb="FF24364A"/></font>
+        <font><b/><sz val="13"/><name val="Calibri"/><color rgb="FF76121D"/></font>
+        <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+        <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FF24364A"/></font>
+    </fonts>
+    <fills count="4">
+        <fill><patternFill patternType="none"/></fill>
+        <fill><patternFill patternType="gray125"/></fill>
+        <fill><patternFill patternType="solid"><fgColor rgb="FF76121D"/><bgColor indexed="64"/></patternFill></fill>
+        <fill><patternFill patternType="solid"><fgColor rgb="FFF8F9FA"/><bgColor indexed="64"/></patternFill></fill>
+    </fills>
+    <borders count="2">
+        <border><left/><right/><top/><bottom/><diagonal/></border>
+        <border>
+            <left style="thin"><color rgb="FFD9DCE1"/></left>
+            <right style="thin"><color rgb="FFD9DCE1"/></right>
+            <top style="thin"><color rgb="FFD9DCE1"/></top>
+            <bottom style="thin"><color rgb="FFD9DCE1"/></bottom>
+            <diagonal/>
+        </border>
+    </borders>
+    <cellXfs count="7">
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+        <xf numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1"/>
+        <xf numFmtId="0" fontId="2" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>
+        <xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyFont="1" applyBorder="1"/>
+        <xf numFmtId="2" fontId="3" fillId="0" borderId="1" applyFont="1" applyBorder="1" applyNumberFormat="1"/>
+        <xf numFmtId="2" fontId="3" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1" applyNumberFormat="1"/>
+        <xf numFmtId="0" fontId="0" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/>
+    </cellXfs>
+</styleSheet>`;
+
+    const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+    <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+    ${contentTypesOverride}
+</Types>`;
+
+    const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+    const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <sheets>${workbookSheets}</sheets>
+</workbook>`;
+
+    const workbookRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    ${workbookRels}
+    <Relationship Id="rIdStyle" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+    const entries = [
+        { name: "[Content_Types].xml", data: contentTypesXml },
+        { name: "_rels/.rels", data: rootRelsXml },
+        { name: "xl/workbook.xml", data: workbookXml },
+        { name: "xl/_rels/workbook.xml.rels", data: workbookRelsXml },
+        { name: "xl/styles.xml", data: stylesXml }
+    ];
+
+    sheets.forEach((sheet, idx) => {
+        entries.push({
+            name: `xl/worksheets/sheet${idx + 1}.xml`,
+            data: buildWorksheetXml(sheet.title, sheet.headers, sheet.rows)
+        });
+    });
+
+    const zipBytes = createZipArchive(entries);
+    return new Blob([zipBytes], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+}
+
+function exportReportsToExcel() {
+    if (!lastReportsData) {
+        alert("Primero consulta los informes para tener datos ordenados que exportar.");
+        return;
+    }
+
+    const k = lastReportsData.indicadores || {};
+    const monthlyOrdered = [...lastMonthlyRows].sort((a, b) =>
+        String(a.mes || "").localeCompare(String(b.mes || ""))
+    );
+
+    const byLineOrdered = [...(lastReportsData.por_linea || [])].sort((a, b) =>
+        String(a.linea || "").localeCompare(String(b.linea || ""), "es")
+    );
+
+    const byStationOrdered = [...(lastReportsData.por_estacion || [])].sort((a, b) => {
+        const lineCmp = String(a.linea || "").localeCompare(String(b.linea || ""), "es");
+        if (lineCmp !== 0) return lineCmp;
+        return String(a.estacion || "").localeCompare(String(b.estacion || ""), "es");
+    });
+
+    const byPositionOrdered = [...(lastReportsData.por_posicion || [])].sort((a, b) =>
+        Number(a.posicion || 0) - Number(b.posicion || 0)
+    );
+
+    const summaryRows = [
+        ["Fecha desde", lastReportFilterMeta.fechaDesde || "Sin límite"],
+        ["Fecha hasta", lastReportFilterMeta.fechaHasta || "Sin límite"],
+        ["Línea", lastReportFilterMeta.linea],
+        ["Estación", lastReportFilterMeta.estacion],
+        ["Total de mediciones", Number(k.total_mediciones ?? 0)],
+        ["Baterías medidas", Number(k.total_baterias ?? 0)],
+        ["Eventos de reemplazo", Number(k.reemplazos_realizados ?? 0)],
+        ["Baterías reemplazadas", Number(k.baterias_reemplazadas ?? 0)],
+        ["Última medición", formatReportDate(k.ultima_medicion)]
+    ];
+
+    const monthlySheetRows = monthlyOrdered.map(m => [
+        formatReportMonth(m.mes),
+        m.mediciones,
+        m.voltaje_promedio !== null ? Number(m.voltaje_promedio.toFixed(3)) : "—",
+        m.resistencia_promedio !== null ? Number(m.resistencia_promedio.toFixed(3)) : "—",
+        m.eventos_reemplazo,
+        m.baterias_reemplazadas,
+        m.hasReplacement ? "Con reemplazos" : "Sin reemplazos"
+    ]);
+
+    const lineSheetRows = byLineOrdered.map(x => [
+        x.linea ?? "—",
+        Number(x.mediciones ?? 0),
+        Number(x.reemplazos ?? 0),
+        Number(x.baterias_reemplazadas ?? 0)
+    ]);
+
+    const stationSheetRows = byStationOrdered.map(x => [
+        x.linea ?? "—",
+        x.estacion ?? "—",
+        x.nemonico ?? "—",
+        Number(x.mediciones ?? 0),
+        Number(x.reemplazos ?? 0)
+    ]);
+
+    const positionSheetRows = byPositionOrdered.map(x => [
+        Number(x.posicion ?? 0),
+        x.voltaje_promedio !== null && x.voltaje_promedio !== undefined ? Number(Number(x.voltaje_promedio).toFixed(3)) : "—",
+        x.resistencia_promedio !== null && x.resistencia_promedio !== undefined ? Number(Number(x.resistencia_promedio).toFixed(3)) : "—",
+        Number(x.lecturas ?? 0)
+    ]);
+
+    const blob = generateXlsxBlob([
+        {
+            name: "Resumen",
+            title: "Resumen General e Indicadores de Reemplazo",
+            headers: ["Concepto", "Valor"],
+            rows: summaryRows
+        },
+        {
+            name: "Evolucion_Mensual",
+            title: "Evolución Mensual Ordenada",
+            headers: [
+                "Mes",
+                "Mediciones",
+                "Voltaje promedio (V)",
+                "Resistencia promedio",
+                "Eventos reemplazo",
+                "Bat. reemplazadas",
+                "Estado reemplazo"
+            ],
+            rows: monthlySheetRows
+        },
+        {
+            name: "Por_Linea",
+            title: "Mediciones y Reemplazos por Línea",
+            headers: ["Línea", "Mediciones", "Reemplazos", "Bat. reemplazadas"],
+            rows: lineSheetRows
+        },
+        {
+            name: "Por_Estacion",
+            title: "Mediciones y Reemplazos por Estación",
+            headers: ["Línea", "Estación", "Nemónico", "Mediciones", "Reemplazos"],
+            rows: stationSheetRows
+        },
+        {
+            name: "Por_Posicion",
+            title: "Promedios por Posición de Batería",
+            headers: ["Posición", "Voltaje promedio (V)", "Resistencia promedio", "Lecturas"],
+            rows: positionSheetRows
+        }
+    ]);
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reporte_baterias_${getLocalDate()}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 const reportsStyles = document.createElement("style");
 reportsStyles.textContent = `
@@ -5372,6 +5759,7 @@ function setupReportsModule() {
             <div class="reports-actions" style="margin-top:14px">
                 <button type="button" class="reports-button" id="reportsSearch">Consultar informes</button>
                 <button type="button" class="reports-button secondary" id="reportsClear">Limpiar filtros</button>
+                <button type="button" class="reports-button secondary" id="reportsExportExcel" disabled>Descargar Excel (.xlsx)</button>
             </div>
             <div class="reports-status" id="reportsStatus" role="status">Selecciona los filtros y consulta los datos.</div>
         </section>
@@ -5434,6 +5822,7 @@ function setupReportsModule() {
         station: document.getElementById("reportsStation"),
         search: document.getElementById("reportsSearch"),
         clear: document.getElementById("reportsClear"),
+        exportExcel: document.getElementById("reportsExportExcel"),
         status: document.getElementById("reportsStatus"),
         filterSummary: document.getElementById("reportsFilterSummary"),
         kpis: document.getElementById("reportsKpis"),
@@ -5449,6 +5838,7 @@ function setupReportsModule() {
     });
     reportsElements.search.addEventListener("click", loadReports);
     reportsElements.clear.addEventListener("click", clearReportsFilters);
+    reportsElements.exportExcel.addEventListener("click", exportReportsToExcel);
 
     loadReportsLines();
 }
@@ -5532,6 +5922,17 @@ async function loadReports() {
     reportsElements.status.textContent = "Calculando indicadores e informes...";
     updateReportsFilterBadge();
 
+    lastReportFilterMeta = {
+        fechaDesde: dateFrom ? formatReportDate(dateFrom) : "",
+        fechaHasta: dateTo ? formatReportDate(dateTo) : "",
+        linea: reportsElements.line.value
+            ? (reportsElements.line.options[reportsElements.line.selectedIndex]?.text || "Línea")
+            : "Todas las líneas",
+        estacion: reportsElements.station.value
+            ? (reportsElements.station.options[reportsElements.station.selectedIndex]?.text || "Estación")
+            : "Todas las estaciones"
+    };
+
     try {
         const { data, error } = await supabaseClient.rpc("consultar_reportes_mediciones", {
             p_fecha_desde: dateFrom,
@@ -5600,6 +6001,12 @@ function renderReports(data) {
     const monthlyRows = Array.isArray(data.evolucion_mensual)
         ? data.evolucion_mensual.map(normalizeMonthlyRow)
         : [];
+
+    lastReportsData = data;
+    lastMonthlyRows = monthlyRows;
+    if (reportsElements.exportExcel) {
+        reportsElements.exportExcel.disabled = false;
+    }
 
     const monthsWithReplacement = monthlyRows.filter(m => m.hasReplacement).length;
     const monthsWithoutReplacement = Math.max(0, monthlyRows.length - monthsWithReplacement);
@@ -6035,6 +6442,7 @@ measurementForm.addEventListener("reset", () => {
         replacementCount.value = "";
 
         clearMeasurementMessage();
+        applyDefaultObservations();
 
     }, 0);
 
@@ -6069,20 +6477,3 @@ if ("serviceWorker" in navigator) {
         console.warn("No se pudo registrar el Service Worker:", err);
     });
 }
-/* 
-```[cite: 2]
-
-### Qué se corrigió y agregó en este archivo
-
-* **Botón `Eliminar` para administradores (`deleteTechnicianRecord`):** Añadido en cada fila de técnicos gestionables (`rol === "tecnico"` y distinto al usuario actual), con confirmación explícita, actualización de `activo = false` y `estado_acceso = "eliminado"`, y respaldo a `supabaseClient.from("tecnicos").update(...)` si la Edge Function `quick-endpoint` no maneja la acción `"eliminar"`[cite: 2].
-* **Etiqueta `ELIMINADO` en el listado:** Cuando un técnico queda con `estado_acceso === "eliminado"` y `activo === false`, se muestra claramente como **ELIMINADO** y se oculta el botón **Eliminar** repetido, manteniendo **Reactivar** por si necesitas restaurar su acceso[cite: 2].
-* **Sincronización al abrir `administracion`:** Al entrar a la vista `administracion` desde `showView`, se refresca `loadTechnicians()` para mostrar siempre el estado actualizado en base de datos[cite: 2].
-* **Cierre limpio del registro del Service Worker:** Se corrigió la llave envolvente extra alrededor de `navigator.serviceWorker.register("./service-worker.js")` al final del script[cite: 2].
-
-### Verificación rápida antes de avanzar a la Etapa 14
-
-1. Guarda este código en tu archivo JS principal en Visual Studio Code, actualiza `CACHE_NAME` en `service-worker.js` y sube los cambios a `EAEM1988/Baterias_Medicion` con `git add .`, `git commit` y `git push`[cite: 2].
-2. Abre `[https://eaem1988.github.io/Baterias_Medicion/](https://eaem1988.github.io/Baterias_Medicion/)` con tu cuenta de administrador, entra a **Administración** y prueba eliminar un técnico de prueba[cite: 2].
-   * *Verificación:* Aparece la confirmación, el técnico pasa a estado **ELIMINADO** y, si intenta iniciar sesión, se bloquea el acceso conservando sus registros anteriores[cite: 2].
-
-¿Quedó probada la eliminación de técnicos en `[https://eaem1988.github.io/Baterias_Medicion/](https://eaem1988.github.io/Baterias_Medicion/)`, o pasamos ya a redactar la **Etapa 14** (Manual de Usuario, Manual Técnico y Manual de Mantenimiento)?*/
